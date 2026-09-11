@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QSmart Clinic - Digital Token & Live Queue System</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background lighting for glassmorphism -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <div class="app-container">
+    <!-- Header Navigation -->
+    <header class="glass-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div>
+          <h1>QSmart <span class="badge-clinic">CareClinic</span></h1>
+          <p class="brand-sub">Digital Tokenizer & Live Queue Tracker</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs" id="navTabs">
+        <button class="tab-btn active" data-tab="patient-view">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Patient View
+        </button>
+        <button class="tab-btn" data-tab="display-board">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Waiting Hall Display
+        </button>
+        <button class="tab-btn" data-tab="staff-dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Staff Dashboard
+        </button>
+      </nav>
+
+      <div class="clinic-status-indicator">
+        <span class="status-dot pulsing"></span>
+        <span class="status-text">Clinic Open (Live Synced)</span>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="content-viewport">
+      <!-- ================= 1. PATIENT INTERFACE ================= -->
+      <section id="patient-view" class="tab-content active">
+        <!-- New Token Generation Screen -->
+        <div id="patient-entry-card" class="glass-card main-card">
+          <div class="card-header">
+            <span class="pill-tag">Self-Service Kiosk</span>
+            <h2>Take Your Digital Token</h2>
+            <p class="card-desc">Avoid crowded waiting rooms. Select your doctor, generate a live digital token, and monitor your turn from anywhere.</p>
+          </div>
+
+          <form id="token-form" class="kiosk-form">
+            <div class="form-group">
+              <label for="patient-name">Patient Name or Nickname</label>
+              <div class="input-glass-wrap">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                <input type="text" id="patient-name" placeholder="e.g. John Doe or Rahul M." required autocomplete="off">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="doctor-select">Choose Doctor / Consultation Service</label>
+              <div class="doctor-cards-grid" id="doctor-selection-grid">
+                <!-- Dynamically populated via JS -->
+              </div>
+              <input type="hidden" id="selected-doctor-id" required>
+            </div>
+
+            <button type="submit" class="primary-btn glow-button" id="btn-generate-token">
+              <span>Generate Digital Token</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- Active Patient Token Status (Visible after token generation or if active token exists) -->
+        <div id="patient-token-display" class="glass-card main-card token-view-card hidden">
+          <!-- Notification Banner for Approaching Turn -->
+          <div id="alert-turn-approaching" class="turn-alert-banner hidden">
+            <div class="alert-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div class="alert-text">
+              <strong id="alert-title">YOUR TURN IS NEXT!</strong>
+              <p id="alert-message">Please proceed towards Room 1. The doctor will see you in moments.</p>
+            </div>
+          </div>
+
+          <!-- Glass Ticket Component -->
+          <div class="glass-ticket">
+            <div class="ticket-header">
+              <div>
+                <span class="clinic-sub-label">QSmart CareClinic</span>
+                <h3 id="ticket-doctor-name">Dr. Sarah Jenkins</h3>
+                <span id="ticket-dept-name" class="ticket-dept">General Physician &bull; Room 1</span>
+              </div>
+              <div class="ticket-date-box">
+                <span id="ticket-timestamp">10:45 AM</span>
+                <span class="live-pill"><span class="dot-live"></span> ACTIVE</span>
+              </div>
+            </div>
+
+            <div class="ticket-body">
+              <div class="token-hero">
+                <span class="token-label">YOUR TOKEN NUMBER</span>
+                <div class="token-number" id="ticket-token-number">A-105</div>
+                <div class="patient-assigned" id="ticket-patient-name">Patient: Marcus Vance</div>
+              </div>
+
+              <div class="queue-metrics-grid">
+                <div class="metric-glass-box highlight-serving">
+                  <div class="metric-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  </div>
+                  <div>
+                    <span class="metric-title">Currently Serving</span>
+                    <span class="metric-val" id="ticket-currently-serving">A-103</span>
+                  </div>
+                </div>
+
+                <div class="metric-glass-box">
+                  <div class="metric-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  </div>
+                  <div>
+                    <span class="metric-title">People Ahead</span>
+                    <span class="metric-val" id="ticket-people-ahead">2</span>
+                  </div>
+                </div>
+
+                <div class="metric-glass-box highlight-time">
+                  <div class="metric-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  </div>
+                  <div>
+                    <span class="metric-title">Estimated Wait Time</span>
+                    <span class="metric-val" id="ticket-est-wait">~ 20 mins</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Queue Progress Bar -->
+              <div class="progress-section">
+                <div class="progress-labels">
+                  <span>Queue Progress</span>
+                  <span id="progress-percent-label">Step 3 of 5</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="ticket-progress-fill" style="width: 60%;"></div>
+                </div>
+              </div>
+
+              <div class="ticket-status-pill" id="ticket-status-container">
+                <span class="status-indicator-chip" id="ticket-status-chip">Waiting in Queue</span>
+              </div>
+            </div>
+
+            <div class="ticket-footer">
+              <p class="ticket-hint">💡 Feel free to wait in the cafeteria or parking area. This page refreshes automatically in real time.</p>
+              <div class="ticket-actions">
+                <button type="button" class="glass-btn-secondary" id="btn-cancel-token">Cancel Token</button>
+                <button type="button" class="glass-btn-primary" id="btn-take-another">New Token</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. PUBLIC DISPLAY BOARD ================= -->
+      <section id="display-board" class="tab-content">
+        <div class="glass-card wide-card">
+          <div class="display-header">
+            <div>
+              <span class="pill-tag red-tag">LIVE CLINIC DISPLAY</span>
+              <h2>Waiting Room Token Board</h2>
+              <p class="card-desc">Real-time consultation status across all clinic consulting rooms.</p>
+            </div>
+            <div class="display-clock" id="live-clock">12:00:00 PM</div>
+          </div>
+
+          <div class="doctor-boards-grid" id="public-boards-container">
+            <!-- Dynamically populated boards per doctor -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. CLINIC STAFF DASHBOARD ================= -->
+      <section id="staff-dashboard" class="tab-content">
+        <div class="staff-layout">
+          <!-- Left Control Panel -->
+          <div class="glass-card staff-controls-card">
+            <div class="card-header">
+              <span class="pill-tag blue-tag">Staff Console</span>
+              <h2>Doctor & Room Selection</h2>
+            </div>
+
+            <div class="form-group">
+              <label for="staff-doctor-select">Select Operating Doctor</label>
+              <select id="staff-doctor-select" class="glass-select">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+
+            <!-- Current Token Being Served Panel -->
+            <div class="serving-now-panel">
+              <span class="serving-label">NOW CONSULTING IN THIS ROOM</span>
+              <div class="current-token-display" id="staff-current-token-num">--</div>
+              <div class="current-patient-name" id="staff-current-patient-name">No patient currently called</div>
+              <div class="consult-timer" id="consult-timer">00:00</div>
+            </div>
+
+            <!-- Primary Staff Action Buttons -->
+            <div class="staff-action-grid">
+              <button id="btn-call-next" class="staff-btn primary-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Call Next Patient</span>
+              </button>
+
+              <button id="btn-recall" class="staff-btn recall-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span>Recall / Re-Announce</span>
+              </button>
+
+              <button id="btn-complete" class="staff-btn complete-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Complete Visit</span>
+              </button>
+
+              <button id="btn-skip" class="staff-btn skip-action">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l10 8-10 8V4z"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+                <span>Mark as Skipped</span>
+              </button>
+            </div>
+
+            <!-- Manual Token Generation for Walk-in Patients -->
+            <div class="walkin-subform">
+              <h4>Issue Walk-in Token (Reception)</h4>
+              <div class="inline-walkin">
+                <input type="text" id="walkin-patient-name" placeholder="Walk-in Patient Name" class="glass-input-small">
+                <button id="btn-issue-walkin" class="glass-btn-accent">Issue</button>
+              </div>
+            </div>
+
+            <!-- Reset / Mock Data Generator -->
+            <div class="debug-actions">
+              <button id="btn-reset-demo" class="link-btn">Reset to Sample Clinic Day</button>
+            </div>
+          </div>
+
+          <!-- Right Queue Lists -->
+          <div class="glass-card staff-queue-card">
+            <div class="queue-tabs">
+              <button class="subtab-btn active" data-subtab="waiting-list">
+                Waiting Queue (<span id="count-waiting">0</span>)
+              </button>
+              <button class="subtab-btn" data-subtab="skipped-list">
+                Skipped / On Hold (<span id="count-skipped">0</span>)
+              </button>
+              <button class="subtab-btn" data-subtab="history-list">
+                Today's History (<span id="count-history">0</span>)
+              </button>
+            </div>
+
+            <!-- Tab 1: Waiting Queue -->
+            <div id="waiting-list" class="subtab-content active">
+              <div class="table-responsive">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>Token #</th>
+                      <th>Patient Name</th>
+                      <th>Created</th>
+                      <th>Est. Wait</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-waiting-body">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab 2: Skipped Queue -->
+            <div id="skipped-list" class="subtab-content">
+              <div class="table-responsive">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>Token #</th>
+                      <th>Patient Name</th>
+                      <th>Skipped At</th>
+                      <th>Reason</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-skipped-body">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab 3: History -->
+            <div id="history-list" class="subtab-content">
+              <div class="table-responsive">
+                <table class="glass-table">
+                  <thead>
+                    <tr>
+                      <th>Token #</th>
+                      <th>Patient Name</th>
+                      <th>Doctor</th>
+                      <th>Total Time</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-history-body">
+                    <!-- Populated via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Audio Chime Element (Synthesized via Web Audio API) -->
+  <script src="app.js"></script>
+</body>
+</html>
