@@ -1,792 +1,1917 @@
-/**
- * QSMART CLINIC - DIGITAL TOKENIZER & QUEUE MANAGEMENT
- * Simple, practical, single-clinic token system with glassmorphism UI.
- */
+/* ============================================================
+   GEETA'S CLINIC - DIGITAL TOKEN SYSTEM
+   ============================================================ */
 
-// -------------------------------------------------------------
-// 1. DEFAULT MOCK CLINIC CONFIGURATION & DATA
-// -------------------------------------------------------------
-const CLINIC_DOCTORS = [
-  {
-    id: 'doc-1',
-    name: 'Dr. Sarah Jenkins',
-    department: 'General Medicine',
-    room: 'Consulting Room 1',
-    prefix: 'A',
-    avgConsultMins: 10,
-    avatarColor: '#00f2fe'
-  },
-  {
-    id: 'doc-2',
-    name: 'Dr. Alan Miller',
-    department: 'Pediatrics & Child Care',
-    room: 'Consulting Room 2',
-    prefix: 'B',
-    avgConsultMins: 12,
-    avatarColor: '#10b981'
-  },
-  {
-    id: 'doc-3',
-    name: 'Dr. Priya Patel',
-    department: 'Dermatology & Skin Care',
-    room: 'Consulting Room 3',
-    prefix: 'C',
-    avgConsultMins: 15,
-    avatarColor: '#8b5cf6'
-  }
-];
+document.addEventListener("DOMContentLoaded", function () {
 
-const INITIAL_MOCK_STATE = {
-  doctors: CLINIC_DOCTORS,
-  tokens: [
-    {
-      id: 'tok-101',
-      number: 'A-101',
-      doctorId: 'doc-1',
-      patientName: 'David Clark',
-      status: 'completed',
-      createdAt: new Date(Date.now() - 40 * 60000).toISOString(),
-      calledAt: new Date(Date.now() - 30 * 60000).toISOString(),
-      completedAt: new Date(Date.now() - 18 * 60000).toISOString()
-    },
-    {
-      id: 'tok-102',
-      number: 'A-102',
-      doctorId: 'doc-1',
-      patientName: 'Emma Watson',
-      status: 'serving',
-      createdAt: new Date(Date.now() - 25 * 60000).toISOString(),
-      calledAt: new Date(Date.now() - 5 * 60000).toISOString(),
-      completedAt: null
-    },
-    {
-      id: 'tok-103',
-      number: 'A-103',
-      doctorId: 'doc-1',
-      patientName: 'Michael Chang',
-      status: 'waiting',
-      createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
-      calledAt: null,
-      completedAt: null
-    },
-    {
-      id: 'tok-104',
-      number: 'A-104',
-      doctorId: 'doc-1',
-      patientName: 'Sophia Rodriguez',
-      status: 'waiting',
-      createdAt: new Date(Date.now() - 8 * 60000).toISOString(),
-      calledAt: null,
-      completedAt: null
-    },
-    // Doctor B
-    {
-      id: 'tok-201',
-      number: 'B-101',
-      doctorId: 'doc-2',
-      patientName: 'Liam Johnson',
-      status: 'serving',
-      createdAt: new Date(Date.now() - 20 * 60000).toISOString(),
-      calledAt: new Date(Date.now() - 4 * 60000).toISOString(),
-      completedAt: null
-    },
-    {
-      id: 'tok-202',
-      number: 'B-102',
-      doctorId: 'doc-2',
-      patientName: 'Oliver Smith',
-      status: 'waiting',
-      createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
-      calledAt: null,
-      completedAt: null
-    },
-    // Doctor C
-    {
-      id: 'tok-301',
-      number: 'C-101',
-      doctorId: 'doc-3',
-      patientName: 'Aria Stark',
-      status: 'serving',
-      createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
-      calledAt: new Date(Date.now() - 12 * 60000).toISOString(),
-      completedAt: null
-    }
-  ],
-  sequenceCounters: {
-    'doc-1': 105,
-    'doc-2': 103,
-    'doc-3': 102
-  }
-};
+    /* ============================================================
+       PAGE ELEMENTS
+       ============================================================ */
 
-// -------------------------------------------------------------
-// 2. STATE REPOSITORY (localStorage backed)
-// -------------------------------------------------------------
-const STORAGE_KEY = 'qsmart_clinic_state_v1';
-const ACTIVE_USER_TOKEN_KEY = 'qsmart_my_active_token_id';
+    const welcomePage = document.getElementById("welcomePage");
+    const loginPage = document.getElementById("loginPage");
+    const tokenPage = document.getElementById("tokenPage");
 
-function loadClinicState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      saveClinicState(INITIAL_MOCK_STATE);
-      return JSON.parse(JSON.stringify(INITIAL_MOCK_STATE));
-    }
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('Error reading localStorage, reverting to mock state', e);
-    return JSON.parse(JSON.stringify(INITIAL_MOCK_STATE));
-  }
-}
+    const getStartedBtn = document.getElementById("getStartedBtn");
+    const loginForm = document.getElementById("loginForm");
 
-function saveClinicState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  // Broadcast custom event for internal same-page components
-  window.dispatchEvent(new Event('clinic-state-updated'));
-}
+    /* ============================================================
+       DATA
+       ============================================================ */
 
-let appState = loadClinicState();
+    const doctors = [
+        {
+            id: "doctor1",
+            name: "Dr. Sarah Jenkins",
+            initials: "SJ",
+            accent: "cyan",
+            department: "General Medicine",
+            room: "Consulting Room 1",
+            roomShort: "Room 1",
+            prefix: "A",
+            currentToken: "A-102",
+            currentPatient: "Emma Watson",
+            consultMinutes: 16,
+            nextTokens: ["A-103", "A-104", "A-105"]
+        },
+        {
+            id: "doctor2",
+            name: "Dr. Alan Miller",
+            initials: "AM",
+            accent: "purple",
+            department: "Pediatrics & Child Care",
+            room: "Consulting Room 2",
+            roomShort: "Room 2",
+            prefix: "B",
+            currentToken: "B-101",
+            currentPatient: "Liam Johnson",
+            consultMinutes: 9,
+            nextTokens: ["B-102"]
+        },
+        {
+            id: "doctor3",
+            name: "Dr. Priya Patel",
+            initials: "PP",
+            accent: "amber",
+            department: "Dermatology & Skin Care",
+            room: "Consulting Room 3",
+            roomShort: "Room 3",
+            prefix: "C",
+            currentToken: "C-101",
+            currentPatient: "Aria Stark",
+            consultMinutes: 4,
+            nextTokens: []
+        }
+    ];
 
-// -------------------------------------------------------------
-// 3. SOUND SYNTHESIZER (Pleasant Chime without audio files)
-// -------------------------------------------------------------
-function playClinicChime() {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    let selectedDoctor = doctors[0];
 
-    const notes = [587.33, 880.00]; // D5, A5 chime
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+    let tokenNumber = localStorage.getItem("clinicToken");
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
+    let patientName =
+        localStorage.getItem("patientName") || "tanu";
 
-      gain.gain.setValueAtTime(0, ctx.currentTime + idx * 0.18);
-      gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + idx * 0.18 + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.6);
+    let appointmentDate =
+        localStorage.getItem("appointmentDate") || "14 Dec 2026";
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+    let appointmentTime =
+        localStorage.getItem("appointmentTime") || "09:00 AM";
 
-      osc.start(ctx.currentTime + idx * 0.18);
-      osc.stop(ctx.currentTime + idx * 0.18 + 0.65);
-    });
-  } catch (e) {
-    console.log('Audio chime disabled or blocked by browser gesture policy');
-  }
-}
 
-// -------------------------------------------------------------
-// 4. TAB NAVIGATION & VIEW SWITCHER
-// -------------------------------------------------------------
-const tabButtons = document.querySelectorAll('.nav-tabs .tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
+    /* ============================================================
+       SMALL HELPERS
+       ============================================================ */
 
-tabButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    tabButtons.forEach(b => b.classList.remove('active'));
-    tabContents.forEach(c => c.classList.remove('active'));
+    function getInitials(name) {
 
-    btn.classList.add('active');
-    const targetId = btn.getAttribute('data-tab');
-    document.getElementById(targetId)?.classList.add('active');
+        if (!name) return "?";
 
-    renderAllViews();
-  });
-});
+        return name
+            .replace(/^Dr\.\s*/i, "")
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(part => part[0].toUpperCase())
+            .join("");
 
-// Staff Dashboard Subtabs (Waiting / Skipped / History)
-const subtabButtons = document.querySelectorAll('.subtab-btn');
-const subtabContents = document.querySelectorAll('.subtab-content');
-
-subtabButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    subtabButtons.forEach(b => b.classList.remove('active'));
-    subtabContents.forEach(c => c.classList.remove('active'));
-
-    btn.classList.add('active');
-    const targetId = btn.getAttribute('data-subtab');
-    document.getElementById(targetId)?.classList.add('active');
-  });
-});
-
-// -------------------------------------------------------------
-// 5. PATIENT VIEW CONTROLLER
-// -------------------------------------------------------------
-const doctorSelectionGrid = document.getElementById('doctor-selection-grid');
-const selectedDoctorInput = document.getElementById('selected-doctor-id');
-const tokenForm = document.getElementById('token-form');
-const patientEntryCard = document.getElementById('patient-entry-card');
-const patientTokenDisplay = document.getElementById('patient-token-display');
-
-// Render Doctor Cards on Kiosk form
-function renderDoctorSelectionCards() {
-  if (!doctorSelectionGrid) return;
-  doctorSelectionGrid.innerHTML = '';
-
-  appState.doctors.forEach((doc, index) => {
-    // calculate current queue depth
-    const waitingCount = appState.tokens.filter(
-      t => t.doctorId === doc.id && t.status === 'waiting'
-    ).length;
-    const estTotalWait = waitingCount * doc.avgConsultMins;
-
-    const card = document.createElement('div');
-    card.className = `doctor-select-card ${index === 0 && !selectedDoctorInput.value ? 'selected' : ''}`;
-    if (selectedDoctorInput.value === doc.id) {
-      card.classList.add('selected');
     }
 
-    card.innerHTML = `
-      <div class="doc-top">
-        <span class="doc-room-badge">${doc.room}</span>
-        <span style="font-size: 0.72rem; color: #10b981;">&bull; Available</span>
-      </div>
-      <div class="doc-name">${doc.name}</div>
-      <div class="doc-dept">${doc.department}</div>
-      <div class="doc-queue-brief">
-        <span>In Queue: <strong>${waitingCount}</strong></span>
-        <span>Est: <strong>~${estTotalWait}m</strong></span>
-      </div>
-    `;
 
-    card.addEventListener('click', () => {
-      document.querySelectorAll('.doctor-select-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      selectedDoctorInput.value = doc.id;
-    });
+    /* ============================================================
+       PAGE NAVIGATION
+       ============================================================ */
 
-    doctorSelectionGrid.appendChild(card);
+    function showPage(page) {
 
-    if (index === 0 && !selectedDoctorInput.value) {
-      selectedDoctorInput.value = doc.id;
+        const normalizedPage = String(page || "")
+            .replace("Page", "")
+            .toLowerCase();
+
+        if (welcomePage) welcomePage.classList.remove("active");
+        if (loginPage) loginPage.classList.remove("active");
+        if (tokenPage) tokenPage.classList.remove("active");
+
+        if (normalizedPage === "welcome" && welcomePage) {
+            welcomePage.classList.add("active");
+        }
+
+        if (normalizedPage === "login" && loginPage) {
+            loginPage.classList.add("active");
+        }
+
+        if (normalizedPage === "token" && tokenPage) {
+            tokenPage.classList.add("active");
+            showDashboard("patient");
+            renderPatientView();
+            renderWaitingHall();
+            renderStaffDashboard();
+        }
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
     }
-  });
-}
 
-// Generate Token Handler
-tokenForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const nameInput = document.getElementById('patient-name');
-  const patientName = nameInput.value.trim();
-  const docId = selectedDoctorInput.value || appState.doctors[0].id;
-  const doc = appState.doctors.find(d => d.id === docId);
+    function showDashboard(view) {
 
-  if (!patientName) return;
+        const normalizedView = String(view || "patient").toLowerCase();
 
-  // Next Token Number
-  const nextSeq = appState.sequenceCounters[docId] || 101;
-  const tokenNumber = `${doc.prefix}-${nextSeq}`;
+        const patientView =
+            document.getElementById("patientView") ||
+            document.getElementById("patientDashboard");
 
-  const newToken = {
-    id: 'tok-' + Date.now(),
-    number: tokenNumber,
-    doctorId: docId,
-    patientName: patientName,
-    status: 'waiting',
-    createdAt: new Date().toISOString(),
-    calledAt: null,
-    completedAt: null
-  };
+        const waitingHall =
+            document.getElementById("waitingHall") ||
+            document.getElementById("waitingDashboard");
 
-  appState.tokens.push(newToken);
-  appState.sequenceCounters[docId] = nextSeq + 1;
-  saveClinicState(appState);
+        const staffDashboard =
+            document.getElementById("staffDashboard");
 
-  // Store active token in session/localStorage so the user can track it
-  localStorage.setItem(ACTIVE_USER_TOKEN_KEY, newToken.id);
+        if (patientView) {
+            patientView.classList.toggle("active", normalizedView === "patient");
+            patientView.classList.toggle("active-dashboard", normalizedView === "patient");
+        }
 
-  nameInput.value = '';
-  playClinicChime();
-  renderAllViews();
-});
+        if (waitingHall) {
+            waitingHall.classList.toggle("active", normalizedView === "waiting");
+            waitingHall.classList.toggle("active-dashboard", normalizedView === "waiting");
+        }
 
-// Render Active Patient Ticket
-function renderPatientTokenTicket() {
-  const activeTokenId = localStorage.getItem(ACTIVE_USER_TOKEN_KEY);
-  if (!activeTokenId) {
-    patientEntryCard.classList.remove('hidden');
-    patientTokenDisplay.classList.add('hidden');
-    return;
-  }
+        if (staffDashboard) {
+            staffDashboard.classList.toggle("active", normalizedView === "staff");
+            staffDashboard.classList.toggle("active-dashboard", normalizedView === "staff");
+        }
 
-  const token = appState.tokens.find(t => t.id === activeTokenId);
-  if (!token) {
-    localStorage.removeItem(ACTIVE_USER_TOKEN_KEY);
-    patientEntryCard.classList.remove('hidden');
-    patientTokenDisplay.classList.add('hidden');
-    return;
-  }
+        document.querySelectorAll(".tab-btn").forEach(function (button) {
+            const isActive =
+                (button.id === "patientViewBtn" && normalizedView === "patient") ||
+                (button.id === "waitingHallBtn" && normalizedView === "waiting") ||
+                (button.id === "staffDashboardBtn" && normalizedView === "staff");
 
-  // Active token found! Display ticket
-  patientEntryCard.classList.add('hidden');
-  patientTokenDisplay.classList.remove('hidden');
-
-  const doctor = appState.doctors.find(d => d.id === token.doctorId);
-
-  // Fill in Ticket details
-  document.getElementById('ticket-doctor-name').textContent = doctor.name;
-  document.getElementById('ticket-dept-name').textContent = `${doctor.department} • ${doctor.room}`;
-  document.getElementById('ticket-token-number').textContent = token.number;
-  document.getElementById('ticket-patient-name').textContent = `Patient: ${token.patientName}`;
-
-  const createdTime = new Date(token.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  document.getElementById('ticket-timestamp').textContent = createdTime;
-
-  // Calculate Metrics
-  const servingToken = appState.tokens.find(t => t.doctorId === doctor.id && t.status === 'serving');
-  const currentlyServingText = servingToken ? servingToken.number : 'None';
-  document.getElementById('ticket-currently-serving').textContent = currentlyServingText;
-
-  // Calculate people ahead
-  let peopleAhead = 0;
-  if (token.status === 'waiting') {
-    const waitingList = appState.tokens
-      .filter(t => t.doctorId === doctor.id && t.status === 'waiting')
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    const myIndex = waitingList.findIndex(t => t.id === token.id);
-    peopleAhead = myIndex >= 0 ? myIndex : 0;
-  } else if (token.status === 'serving') {
-    peopleAhead = 0;
-  }
-
-  document.getElementById('ticket-people-ahead').textContent = peopleAhead;
-
-  // Estimated wait time
-  const estMinutes = peopleAhead * doctor.avgConsultMins;
-  document.getElementById('ticket-est-wait').textContent = token.status === 'serving'
-    ? 'Now'
-    : token.status === 'completed'
-      ? '0 min'
-      : `~ ${estMinutes} mins`;
-
-  // Status Chip & Alerts
-  const statusChip = document.getElementById('ticket-status-chip');
-  const alertBanner = document.getElementById('alert-turn-approaching');
-
-  statusChip.className = 'status-indicator-chip';
-
-  if (token.status === 'serving') {
-    statusChip.classList.add('serving');
-    statusChip.textContent = `🟢 Currently Inside: ${doctor.room}`;
-    alertBanner.classList.remove('hidden');
-    document.getElementById('alert-title').textContent = "IT'S YOUR TURN NOW!";
-    document.getElementById('alert-message').textContent = `Please proceed immediately inside ${doctor.room} with ${doctor.name}.`;
-  } else if (token.status === 'waiting') {
-    if (peopleAhead <= 1) {
-      alertBanner.classList.remove('hidden');
-      document.getElementById('alert-title').textContent = "YOUR TURN IS APPROACHING!";
-      document.getElementById('alert-message').textContent = `Only ${peopleAhead} patient ahead of you. Please be near ${doctor.room}.`;
-      statusChip.textContent = `Next in Line (${peopleAhead} ahead)`;
-    } else {
-      alertBanner.classList.add('hidden');
-      statusChip.textContent = `Waiting in Queue (${peopleAhead} ahead)`;
+            button.classList.toggle("active", isActive);
+        });
     }
-  } else if (token.status === 'skipped') {
-    statusChip.classList.add('skipped');
-    statusChip.textContent = `⚠️ Token Was Skipped (Visit Reception)`;
-    alertBanner.classList.add('hidden');
-  } else if (token.status === 'completed') {
-    statusChip.classList.add('completed');
-    statusChip.textContent = `✓ Consultation Completed`;
-    alertBanner.classList.add('hidden');
-  }
 
-  // Progress Bar
-  const totalInLine = peopleAhead + 1;
-  const progressPercent = token.status === 'serving' ? 95 : token.status === 'completed' ? 100 : Math.max(15, 100 - (peopleAhead * 25));
-  document.getElementById('ticket-progress-fill').style.width = `${progressPercent}%`;
-  document.getElementById('progress-percent-label').textContent = token.status === 'serving'
-    ? 'Now Calling'
-    : `${peopleAhead} ahead`;
-}
-
-// Cancel / Reset my token button
-document.getElementById('btn-cancel-token')?.addEventListener('click', () => {
-  if (confirm('Cancel your current token?')) {
-    const activeTokenId = localStorage.getItem(ACTIVE_USER_TOKEN_KEY);
-    if (activeTokenId) {
-      appState.tokens = appState.tokens.filter(t => t.id !== activeTokenId);
-      saveClinicState(appState);
+    function showPatientView() {
+        showDashboard("patient");
     }
-    localStorage.removeItem(ACTIVE_USER_TOKEN_KEY);
-    renderAllViews();
-  }
+
+    function showWaitingHall() {
+        showDashboard("waiting");
+    }
+
+    function showStaffDashboard() {
+        showDashboard("staff");
+    }
+
+    window.showPage = showPage;
+    window.showDashboard = showDashboard;
+    window.showPatientView = showPatientView;
+    window.showWaitingHall = showWaitingHall;
+    window.showStaffDashboard = showStaffDashboard;
+
+
+    /* ============================================================
+       GET STARTED BUTTON
+       ============================================================ */
+
+    if (getStartedBtn) {
+
+        getStartedBtn.addEventListener("click", function () {
+
+            showPage("login");
+
+        });
+
+    }
+
+
+    /* ============================================================
+       LOGIN
+       ============================================================ */
+
+    if (loginForm) {
+
+        loginForm.addEventListener("submit", function (event) {
+
+            event.preventDefault();
+
+            const nameInput =
+                document.getElementById("loginPatientName");
+
+            const mobileInput =
+                document.getElementById("loginMobile");
+
+            const passwordInput =
+                document.getElementById("loginPassword");
+
+            if (nameInput && nameInput.value.trim() !== "") {
+
+                patientName = nameInput.value.trim();
+
+            }
+
+            localStorage.setItem("patientName", patientName);
+
+            if (mobileInput) {
+                localStorage.setItem(
+                    "patientMobile",
+                    mobileInput.value
+                );
+            }
+
+            if (passwordInput) {
+                localStorage.setItem(
+                    "patientPassword",
+                    passwordInput.value
+                );
+            }
+
+            showPage("token");
+
+        });
+
+    }
+
+
+    /* ============================================================
+       TOKEN GENERATION
+       ============================================================ */
+
+    function generateToken() {
+
+        let currentNumber = 105;
+
+        const oldToken = localStorage.getItem("clinicToken");
+
+        if (oldToken) {
+
+            const numberPart =
+                parseInt(oldToken.split("-")[1]);
+
+            if (!isNaN(numberPart)) {
+                currentNumber = numberPart + 1;
+            }
+
+        }
+
+        tokenNumber =
+            selectedDoctor.prefix + "-" + currentNumber;
+
+        localStorage.setItem(
+            "clinicToken",
+            tokenNumber
+        );
+
+        localStorage.setItem(
+            "patientName",
+            patientName
+        );
+
+        appointmentDate =
+            getFormattedDate();
+
+        appointmentTime =
+            getAppointmentTime();
+
+        localStorage.setItem(
+            "appointmentDate",
+            appointmentDate
+        );
+
+        localStorage.setItem(
+            "appointmentTime",
+            appointmentTime
+        );
+
+        /*
+         * Add new token to doctor's queue.
+         */
+
+        selectedDoctor.nextTokens.push(tokenNumber);
+
+        renderPatientView();
+        renderWaitingHall();
+        renderStaffDashboard();
+
+        showPatientView();
+
+    }
+
+
+    /* ============================================================
+       CURRENT DATE
+       ============================================================ */
+
+    function getFormattedDate() {
+
+        const savedDate =
+            document.getElementById("appointmentDate");
+
+        if (
+            savedDate &&
+            savedDate.value
+        ) {
+
+            const date =
+                new Date(savedDate.value);
+
+            if (!isNaN(date.getTime())) {
+
+                return date.toLocaleDateString(
+                    "en-IN",
+                    {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
+                    }
+                );
+
+            }
+
+        }
+
+        return new Date().toLocaleDateString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            }
+        );
+
+    }
+
+
+    /* ============================================================
+       APPOINTMENT TIME
+       ============================================================ */
+
+    function getAppointmentTime() {
+
+        const timeInput =
+            document.getElementById("appointmentTime");
+
+        if (
+            timeInput &&
+            timeInput.value
+        ) {
+
+            return timeInput.value;
+
+        }
+
+        return "09:00 AM";
+
+    }
+
+
+    /* ============================================================
+       PATIENT VIEW
+       ============================================================ */
+
+    function renderPatientView() {
+
+        const patientView =
+            document.getElementById("patientView") ||
+            document.getElementById("patientDashboard");
+
+        if (!patientView) return;
+
+        if (!tokenNumber) {
+
+            patientView.innerHTML = `
+
+                <div class="glass-card main-card">
+
+                    <span class="pill-tag">
+                        SELF-SERVICE KIOSK
+                    </span>
+
+                    <div class="card-header">
+
+                        <h2>
+                            Take Your Digital Token
+                        </h2>
+
+                        <p class="card-desc">
+                            Select your doctor and appointment
+                            details to generate your digital token.
+                        </p>
+
+                    </div>
+
+                    <div class="kiosk-form">
+
+                        <div class="form-group">
+
+                            <label>
+                                Patient Name
+                            </label>
+
+                            <input
+                                id="tokenPatientName"
+                                type="text"
+                                placeholder="Enter patient name"
+                                value="${patientName}"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Choose Doctor
+                            </label>
+
+                            <div
+                                class="doctor-cards-grid"
+                                id="doctorSelection"
+                            >
+
+                                ${createDoctorCards()}
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Select Date
+                            </label>
+
+                            <input
+                                type="date"
+                                id="appointmentDate"
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Select Time
+                            </label>
+
+                            <select
+                                id="appointmentTime"
+                            >
+
+                                <option>
+                                    09:00 AM
+                                </option>
+
+                                <option>
+                                    10:00 AM
+                                </option>
+
+                                <option>
+                                    11:00 AM
+                                </option>
+
+                                <option>
+                                    12:00 PM
+                                </option>
+
+                                <option>
+                                    02:00 PM
+                                </option>
+
+                                <option>
+                                    03:00 PM
+                                </option>
+
+                                <option>
+                                    04:00 PM
+                                </option>
+
+                                <option>
+                                    05:00 PM
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <button
+                            class="glow-button"
+                            id="getTokenButton"
+                        >
+
+                            🎟️ Get Your Token
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            `;
+
+            attachTokenEvents();
+
+            return;
+        }
+
+
+        /* ========================================================
+           OLD / PREMIUM TOKEN DISPLAY
+           ======================================================== */
+
+        const peopleAhead =
+            selectedDoctor.nextTokens.length > 0
+                ? selectedDoctor.nextTokens.indexOf(tokenNumber)
+                : 0;
+
+        const estimatedMinutes =
+            Math.max(0, peopleAhead * 10);
+
+        const progress =
+            peopleAhead === 0
+                ? 100
+                : Math.max(
+                    20,
+                    100 - (peopleAhead * 20)
+                );
+
+
+        patientView.innerHTML = `
+
+            <div class="glass-card token-view-card">
+
+                <!-- TOP ALERT -->
+
+                <div class="turn-alert-banner">
+
+                    <div class="alert-icon-wrap">
+                        🔔
+                    </div>
+
+                    <div class="alert-text">
+
+                        <strong>
+                            Your token is active
+                        </strong>
+
+                        <p>
+                            Please keep this page open
+                            to monitor your queue.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- DIGITAL TICKET -->
+
+                <div class="glass-ticket">
+
+                    <!-- TICKET HEADER -->
+
+                    <div class="ticket-header">
+
+                        <div>
+
+                            <div class="clinic-sub-label">
+                                QSMART CARECLINIC
+                            </div>
+
+                            <h3>
+                                ${selectedDoctor.name}
+                            </h3>
+
+                            <div class="ticket-dept">
+
+                                ${selectedDoctor.department}
+                                •
+                                ${selectedDoctor.room}
+
+                            </div>
+
+                        </div>
+
+
+                        <div style="text-align:right">
+
+                            <div id="liveClock">
+                                ${getCurrentTime()}
+                            </div>
+
+                            <span class="pill-tag">
+                                ● ACTIVE
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- TOKEN NUMBER -->
+
+                    <div
+                        style="
+                        text-align:center;
+                        padding:40px 20px 30px;
+                        "
+                    >
+
+                        <div
+                            style="
+                            color:#94a3b8;
+                            font-size:15px;
+                            font-weight:700;
+                            letter-spacing:2px;
+                            "
+                        >
+                            YOUR TOKEN NUMBER
+                        </div>
+
+
+                        <div
+                            style="
+                            font-size:78px;
+                            font-weight:800;
+                            color:#00f2fe;
+                            text-shadow:
+                            0 0 25px
+                            rgba(0,242,254,0.45);
+                            margin:5px 0;
+                            "
+                        >
+
+                            ${tokenNumber}
+
+                        </div>
+
+
+                        <div
+                            style="
+                            font-size:18px;
+                            color:#cbd5e1;
+                            "
+                        >
+
+                            Patient:
+                            <strong>
+                                ${patientName}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- QUEUE INFORMATION -->
+
+                    <div
+                        style="
+                        display:grid;
+                        grid-template-columns:
+                        repeat(3,1fr);
+                        gap:16px;
+                        padding:0 28px 28px;
+                        "
+                    >
+
+                        <div class="queue-info-card">
+
+                            <span>
+                                ▶
+                            </span>
+
+                            <small>
+                                CURRENTLY SERVING
+                            </small>
+
+                            <strong>
+                                ${selectedDoctor.currentToken}
+                            </strong>
+
+                        </div>
+
+
+                        <div class="queue-info-card">
+
+                            <span>
+                                👥
+                            </span>
+
+                            <small>
+                                PEOPLE AHEAD
+                            </small>
+
+                            <strong>
+                                ${peopleAhead}
+                            </strong>
+
+                        </div>
+
+
+                        <div class="queue-info-card">
+
+                            <span>
+                                ◷
+                            </span>
+
+                            <small>
+                                ESTIMATED WAIT TIME
+                            </small>
+
+                            <strong>
+                                ~ ${estimatedMinutes} mins
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- PROGRESS -->
+
+                    <div
+                        style="
+                        padding:0 28px 30px;
+                        "
+                    >
+
+                        <div
+                            style="
+                            display:flex;
+                            justify-content:
+                            space-between;
+                            margin-bottom:10px;
+                            color:#94a3b8;
+                            "
+                        >
+
+                            <span>
+                                Queue Progress
+                            </span>
+
+                            <span>
+                                ${peopleAhead} ahead
+                            </span>
+
+                        </div>
+
+
+                        <div
+                            style="
+                            height:10px;
+                            background:#1e293b;
+                            border-radius:20px;
+                            overflow:hidden;
+                            "
+                        >
+
+                            <div
+                                style="
+                                width:${progress}%;
+                                height:100%;
+                                background:
+                                linear-gradient(
+                                90deg,
+                                #00f2fe,
+                                #10b981
+                                );
+                                border-radius:20px;
+                                "
+                            ></div>
+
+                        </div>
+
+
+                        <div
+                            style="
+                            text-align:center;
+                            margin-top:20px;
+                            "
+                        >
+
+                            <span class="pill-tag">
+
+                                Waiting in Queue
+                                (${peopleAhead} ahead)
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- FOOTER -->
+
+                    <div
+                        style="
+                        border-top:
+                        1px dashed
+                        rgba(255,255,255,0.15);
+
+                        padding:
+                        20px 28px;
+
+                        display:flex;
+                        justify-content:
+                        space-between;
+
+                        align-items:center;
+
+                        gap:15px;
+
+                        flex-wrap:wrap;
+                        "
+                    >
+
+                        <div>
+
+                            💡 Feel free to wait in the
+                            cafeteria or parking area.
+
+                            <br>
+
+                            <span
+                                style="
+                                color:#94a3b8;
+                                font-size:13px;
+                                "
+                            >
+                                This page refreshes
+                                automatically.
+                            </span>
+
+                        </div>
+
+
+                        <div
+                            style="
+                            display:flex;
+                            gap:10px;
+                            "
+                        >
+
+                            <button
+                                class="secondary-button"
+                                id="cancelTokenBtn"
+                            >
+                                Cancel Token
+                            </button>
+
+
+                            <button
+                                class="glow-button"
+                                id="newTokenBtn"
+                            >
+                                New Token
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        attachTokenDisplayEvents();
+
+        startLiveClock();
+
+    }
+
+
+    /* ============================================================
+       DOCTOR CARDS
+       ============================================================ */
+
+    function createDoctorCards() {
+
+        return doctors.map(function (doctor) {
+
+            return `
+
+                <div
+                    class="doctor-select-card
+                    ${doctor.id === selectedDoctor.id
+                    ? "selected"
+                    : ""}"
+
+                    data-doctor="${doctor.id}"
+                >
+
+                    <div class="doc-top">
+
+                        <span style="font-size:28px">
+                            👨‍⚕️
+                        </span>
+
+                        <span class="doc-room-badge">
+                            ${doctor.room}
+                        </span>
+
+                    </div>
+
+                    <div class="doc-name">
+                        ${doctor.name}
+                    </div>
+
+                    <div class="doc-dept">
+                        ${doctor.department}
+                    </div>
+
+                    <div class="doc-queue-brief">
+
+                        <span>
+                            Current
+                        </span>
+
+                        <strong>
+                            ${doctor.currentToken}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }).join("");
+
+    }
+
+
+    /* ============================================================
+       TOKEN FORM EVENTS
+       ============================================================ */
+
+    function attachTokenEvents() {
+
+        const doctorCards =
+            document.querySelectorAll(
+                ".doctor-select-card"
+            );
+
+        doctorCards.forEach(function (card) {
+
+            card.addEventListener(
+                "click",
+                function () {
+
+                    const doctorId =
+                        card.dataset.doctor;
+
+                    const doctor =
+                        doctors.find(
+                            d => d.id === doctorId
+                        );
+
+                    if (doctor) {
+
+                        selectedDoctor = doctor;
+
+                        doctorCards.forEach(
+                            c =>
+                            c.classList.remove(
+                                "selected"
+                            )
+                        );
+
+                        card.classList.add(
+                            "selected"
+                        );
+
+                    }
+
+                }
+            );
+
+        });
+
+
+        const getTokenButton =
+            document.getElementById(
+                "getTokenButton"
+            );
+
+
+        if (getTokenButton) {
+
+            getTokenButton.addEventListener(
+                "click",
+                function () {
+
+                    const nameInput =
+                        document.getElementById(
+                            "tokenPatientName"
+                        );
+
+                    if (
+                        nameInput &&
+                        nameInput.value.trim()
+                    ) {
+
+                        patientName =
+                            nameInput.value.trim();
+
+                    }
+
+                    if (!patientName) {
+
+                        alert(
+                            "Please enter patient name."
+                        );
+
+                        return;
+
+                    }
+
+                    generateToken();
+
+                }
+            );
+
+        }
+
+    }
+
+
+    /* ============================================================
+       TOKEN DISPLAY BUTTONS
+       ============================================================ */
+
+    function attachTokenDisplayEvents() {
+
+        const cancelButton =
+            document.getElementById(
+                "cancelTokenBtn"
+            );
+
+        const newTokenButton =
+            document.getElementById(
+                "newTokenBtn"
+            );
+
+
+        if (cancelButton) {
+
+            cancelButton.addEventListener(
+                "click",
+                function () {
+
+                    const confirmCancel =
+                        confirm(
+                            "Are you sure you want to cancel your token?"
+                        );
+
+                    if (!confirmCancel) return;
+
+                    localStorage.removeItem(
+                        "clinicToken"
+                    );
+
+                    tokenNumber = null;
+
+                    renderPatientView();
+
+                }
+            );
+
+        }
+
+
+        if (newTokenButton) {
+
+            newTokenButton.addEventListener(
+                "click",
+                function () {
+
+                    localStorage.removeItem(
+                        "clinicToken"
+                    );
+
+                    tokenNumber = null;
+
+                    renderPatientView();
+
+                }
+            );
+
+        }
+
+    }
+
+
+    /* ============================================================
+       WAITING HALL DISPLAY
+       ============================================================ */
+
+    function renderWaitingHall() {
+
+        const waitingHall =
+            document.getElementById("waitingHall") ||
+            document.getElementById("waitingDashboard");
+
+        if (!waitingHall) return;
+
+
+        waitingHall.innerHTML = `
+
+            <div class="glass-card wide-card">
+
+                <div class="waiting-header">
+
+                    <div>
+
+                        <span class="pill-tag red-tag">
+                            LIVE CLINIC DISPLAY
+                        </span>
+
+                        <h2>
+                            Waiting Room Token Board
+                        </h2>
+
+                        <p class="card-desc">
+                            Real-time consultation status
+                            across all clinic consulting rooms.
+                        </p>
+
+                    </div>
+
+                    <div class="large-clock">
+                        ${getCurrentTime()}
+                    </div>
+
+                </div>
+
+
+                <div class="doctor-board-grid">
+
+                    ${doctors.map(
+                        doctor => `
+
+                        <div class="doctor-board-card accent-${doctor.accent}">
+
+                            <div class="doctor-board-header">
+
+                                <div class="doctor-id-group">
+
+                                    <div class="doctor-avatar">
+                                        ${doctor.initials}
+                                    </div>
+
+                                    <div>
+
+                                        <h3>
+                                            ${doctor.name}
+                                        </h3>
+
+                                        <p>
+                                            ${doctor.department}
+                                        </p>
+
+                                    </div>
+
+                                </div>
+
+                                <span
+                                    class="room-badge"
+                                >
+                                    ${doctor.roomShort}
+                                </span>
+
+                            </div>
+
+
+                            <div
+                                class="currently-serving-area"
+                            >
+
+                                <div>
+                                    CURRENTLY SERVING
+                                </div>
+
+                                <strong>
+                                    ${doctor.currentToken}
+                                </strong>
+
+                                <p>
+                                    Patient:
+                                    ${doctor.currentPatient}
+                                </p>
+
+                            </div>
+
+
+                            <div class="next-queue">
+
+                                <span>
+                                    Next in Queue
+                                </span>
+
+                                <div>
+
+                                    ${
+                                        doctor.nextTokens.length
+                                        ?
+                                        doctor.nextTokens
+                                        .slice(0, 4)
+                                        .map(
+                                            token =>
+                                            `<span>${token}</span>`
+                                        )
+                                        .join("")
+                                        :
+                                        `<span class="queue-empty">
+                                            Queue empty
+                                        </span>`
+                                    }
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    `).join("")}
+
+                </div>
+
+            </div>
+
+        `;
+
+    }
+
+
+    /* ============================================================
+       STAFF DASHBOARD
+       ============================================================ */
+
+    function renderStaffDashboard() {
+
+        const staffDashboard =
+            document.getElementById("staffDashboard");
+
+        if (!staffDashboard) return;
+
+
+        staffDashboard.innerHTML = `
+
+            <div
+                class="staff-layout"
+            >
+
+                <!-- LEFT SIDE -->
+
+                <div class="glass-card staff-selection">
+
+                    <span class="pill-tag blue-tag">
+                        STAFF CONSOLE
+                    </span>
+
+                    <h2>
+                        Doctor & Room
+                        Selection
+                    </h2>
+
+
+                    <div
+                        class="form-group"
+                        style="margin-top:25px"
+                    >
+
+                        <label>
+                            Select Operating Doctor
+                        </label>
+
+                        <select
+                            id="staffDoctorSelect"
+                            class="glass-select"
+                        >
+
+                            ${doctors.map(
+                                doctor =>
+                                `
+                                <option
+                                    value="${doctor.id}"
+                                    ${
+                                    doctor.id ===
+                                    selectedDoctor.id
+                                    ? "selected"
+                                    : ""
+                                    }
+                                >
+                                    ${doctor.name}
+                                    (${doctor.roomShort})
+                                </option>
+                                `
+                            ).join("")}
+
+                        </select>
+
+                    </div>
+
+
+                    <div
+                        class="current-consultation accent-${selectedDoctor.accent}"
+                    >
+
+                        <span>
+                            NOW CONSULTING
+                            IN THIS ROOM
+                        </span>
+
+                        <strong>
+                            ${selectedDoctor.currentToken}
+                        </strong>
+
+                        <p>
+                            Patient:
+                            ${selectedDoctor.currentPatient}
+                        </p>
+
+                        <div class="consult-timer">
+                            <span class="timer-dot"></span>
+                            In consultation:
+                            ~${selectedDoctor.consultMinutes} min
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        class="call-next-button"
+                        id="callNextPatient"
+                    >
+
+                        ▶
+                        Call Next Patient
+
+                    </button>
+
+
+                    <div class="staff-action-grid">
+
+                        <button
+                            class="recall-button"
+                            id="recallButton"
+                        >
+                            🔔
+                            <span>
+                                Recall /
+                                Re-Announce
+                            </span>
+                        </button>
+
+
+                        <button
+                            class="complete-button"
+                            id="completeButton"
+                        >
+                            ✓
+                            <span>
+                                Complete Visit
+                            </span>
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- RIGHT SIDE -->
+
+                <div class="glass-card queue-management">
+
+                    <div
+                        class="staff-tabs"
+                    >
+
+                        <button class="staff-tab active">
+                            Waiting Queue
+                            (${selectedDoctor.nextTokens.length})
+                        </button>
+
+                        <button class="staff-tab">
+                            Skipped / On Hold
+                            (0)
+                        </button>
+
+                        <button class="staff-tab">
+                            Today's History
+                            (1)
+                        </button>
+
+                    </div>
+
+
+                    <div class="queue-table-wrapper">
+
+                        ${
+                            selectedDoctor.nextTokens.length === 0
+                            ? `
+                                <div class="queue-empty-state">
+                                    <div class="queue-empty-icon">◌</div>
+                                    <strong>No one is waiting</strong>
+                                    <p>New tokens for this room will appear here.</p>
+                                </div>
+                            `
+                            : `
+                                <table class="queue-table">
+
+                                    <thead>
+                                        <tr>
+                                            <th>TOKEN #</th>
+                                            <th>PATIENT NAME</th>
+                                            <th>CREATED</th>
+                                            <th>EST. WAIT</th>
+                                            <th>ACTION</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+
+                                        ${
+                                            selectedDoctor.nextTokens
+                                            .map(
+                                                (token, index) => {
+
+                                                    const isCurrentPatient =
+                                                        token === tokenNumber;
+
+                                                    const name =
+                                                        isCurrentPatient
+                                                        ? patientName
+                                                        : "Patient " + (index + 1);
+
+                                                    const waitClass =
+                                                        index === 0
+                                                        ? "wait-pill wait-now"
+                                                        : "wait-pill";
+
+                                                    return `
+
+                                                    <tr>
+
+                                                        <td>
+                                                            <span class="table-token">
+                                                                ${token}
+                                                            </span>
+                                                        </td>
+
+                                                        <td>
+                                                            <div class="patient-cell">
+                                                                <span class="patient-avatar">
+                                                                    ${getInitials(name)}
+                                                                </span>
+                                                                ${name}
+                                                            </div>
+                                                        </td>
+
+                                                        <td>
+                                                            ${getCurrentTime()}
+                                                        </td>
+
+                                                        <td>
+                                                            <span class="${waitClass}">
+                                                                ~${index * 10}m
+                                                            </span>
+                                                        </td>
+
+                                                        <td>
+                                                            <button class="call-now-button" data-call-token="${token}">
+                                                                Call Now
+                                                            </button>
+                                                        </td>
+
+                                                    </tr>
+
+                                                    `;
+
+                                                }
+                                            )
+                                            .join("")
+                                        }
+
+                                    </tbody>
+
+                                </table>
+                            `
+                        }
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        `;
+
+
+        const doctorSelect =
+            document.getElementById(
+                "staffDoctorSelect"
+            );
+
+
+        if (doctorSelect) {
+
+            doctorSelect.addEventListener(
+                "change",
+                function () {
+
+                    const doctor =
+                        doctors.find(
+                            d =>
+                            d.id ===
+                            doctorSelect.value
+                        );
+
+                    if (doctor) {
+
+                        selectedDoctor = doctor;
+
+                        renderStaffDashboard();
+                        renderPatientView();
+
+                    }
+
+                }
+            );
+
+        }
+
+
+        const callNext =
+            document.getElementById(
+                "callNextPatient"
+            );
+
+
+        if (callNext) {
+
+            callNext.addEventListener(
+                "click",
+                function () {
+
+                    if (
+                        selectedDoctor.nextTokens.length === 0
+                    ) {
+
+                        alert(
+                            "No patients are waiting."
+                        );
+
+                        return;
+
+                    }
+
+                    selectedDoctor.currentToken =
+                        selectedDoctor.nextTokens.shift();
+
+                    selectedDoctor.currentPatient =
+                        selectedDoctor.currentToken ===
+                        tokenNumber
+                            ? patientName
+                            : "Patient";
+
+                    selectedDoctor.consultMinutes = 0;
+
+                    renderStaffDashboard();
+                    renderWaitingHall();
+                    renderPatientView();
+
+                }
+            );
+
+        }
+
+
+        const completeButton =
+            document.getElementById(
+                "completeButton"
+            );
+
+
+        if (completeButton) {
+
+            completeButton.addEventListener(
+                "click",
+                function () {
+
+                    alert(
+                        "Visit completed successfully."
+                    );
+
+                }
+            );
+
+        }
+
+
+        const recallButton =
+            document.getElementById(
+                "recallButton"
+            );
+
+
+        if (recallButton) {
+
+            recallButton.addEventListener(
+                "click",
+                function () {
+
+                    alert(
+                        "Patient has been re-announced."
+                    );
+
+                }
+            );
+
+        }
+
+
+        staffDashboard
+            .querySelectorAll("[data-call-token]")
+            .forEach(function (button) {
+
+                button.addEventListener(
+                    "click",
+                    function () {
+
+                        window.callSpecificPatient(
+                            button.dataset.callToken
+                        );
+
+                    }
+                );
+
+            });
+
+    }
+
+
+    /* ============================================================
+       NAVIGATION BETWEEN THIRD-PAGE VIEWS
+       ============================================================ */
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            const button =
+                event.target.closest(
+                    "[data-view]"
+                );
+
+            if (!button) return;
+
+            const view =
+                button.dataset.view;
+
+            showThirdPageView(view);
+
+        }
+    );
+
+
+    function showThirdPageView(view) {
+
+        const patientView =
+            document.getElementById("patientView") ||
+            document.getElementById("patientDashboard");
+
+        const waitingHall =
+            document.getElementById("waitingHall") ||
+            document.getElementById("waitingDashboard");
+
+        const staffDashboard =
+            document.getElementById("staffDashboard");
+
+
+        if (patientView)
+            patientView.classList.remove(
+                "active"
+            );
+
+        if (waitingHall)
+            waitingHall.classList.remove(
+                "active"
+            );
+
+        if (staffDashboard)
+            staffDashboard.classList.remove(
+                "active"
+            );
+
+
+        const selectedTab =
+            document.querySelectorAll(
+                "[data-view]"
+            );
+
+        selectedTab.forEach(
+            tab =>
+            tab.classList.remove("active")
+        );
+
+
+        if (view === "patient") {
+
+            if (patientView)
+                patientView.classList.add(
+                    "active"
+                );
+
+        }
+
+
+        if (view === "waiting") {
+
+            if (waitingHall)
+                waitingHall.classList.add(
+                    "active"
+                );
+
+        }
+
+
+        if (view === "staff") {
+
+            if (staffDashboard)
+                staffDashboard.classList.add(
+                    "active"
+                );
+
+        }
+
+
+        document
+            .querySelectorAll(
+                `[data-view="${view}"]`
+            )
+            .forEach(
+                tab =>
+                tab.classList.add("active")
+            );
+
+    }
+
+
+    /* ============================================================
+       CLOCK
+       ============================================================ */
+
+    function getCurrentTime() {
+
+        return new Date().toLocaleTimeString(
+            "en-IN",
+            {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            }
+        );
+
+    }
+
+
+    function startLiveClock() {
+
+        setInterval(
+            function () {
+
+                const clock =
+                    document.getElementById(
+                        "liveClock"
+                    );
+
+                if (clock) {
+
+                    clock.textContent =
+                        getCurrentTime();
+
+                }
+
+                const hallClock =
+                    document.querySelector(
+                        "#waitingDashboard .large-clock"
+                    );
+
+                if (hallClock) {
+
+                    hallClock.textContent =
+                        getCurrentTime();
+
+                }
+
+            },
+            1000
+        );
+
+    }
+
+    window.cancelToken = function () {
+        const confirmCancel = confirm("Are you sure you want to cancel your token?");
+
+        if (!confirmCancel) return;
+
+        localStorage.removeItem("clinicToken");
+        tokenNumber = null;
+        renderPatientView();
+    };
+
+    window.startNewToken = function () {
+        localStorage.removeItem("clinicToken");
+        tokenNumber = null;
+        renderPatientView();
+    };
+
+    window.callNextPatient = function () {
+        if (selectedDoctor.nextTokens.length === 0) {
+            alert("No patients are waiting.");
+            return;
+        }
+
+        selectedDoctor.currentToken = selectedDoctor.nextTokens.shift();
+        selectedDoctor.currentPatient = selectedDoctor.currentToken === tokenNumber
+            ? patientName
+            : "Patient";
+
+        renderStaffDashboard();
+        renderWaitingHall();
+        renderPatientView();
+    };
+
+    window.recallPatient = function () {
+        alert("Patient has been re-announced.");
+    };
+
+    window.completeVisit = function () {
+        alert("Visit completed successfully.");
+    };
+
+    window.callSpecificPatient = function (token) {
+        alert("Calling " + token + " now.");
+    };
+
+    window.showThirdPageView = showThirdPageView;
+
+
+    /* ============================================================
+       LIVE CLOCK FOR WAITING HALL (runs regardless of active page)
+       ============================================================ */
+
+    setInterval(function () {
+
+        const hallClock =
+            document.querySelector(
+                "#waitingDashboard .large-clock"
+            );
+
+        if (hallClock) {
+
+            hallClock.textContent = getCurrentTime();
+
+        }
+
+    }, 1000);
+
+
+    /* ============================================================
+       INITIAL PAGE
+       ============================================================ */
+
+    showPage("welcome");
+
 });
-
-document.getElementById('btn-take-another')?.addEventListener('click', () => {
-  localStorage.removeItem(ACTIVE_USER_TOKEN_KEY);
-  renderAllViews();
-});
-
-// -------------------------------------------------------------
-// 6. WAITING HALL PUBLIC DISPLAY BOARD
-// -------------------------------------------------------------
-function renderPublicDisplayBoard() {
-  const container = document.getElementById('public-boards-container');
-  if (!container) return;
-  container.innerHTML = '';
-
-  appState.doctors.forEach(doc => {
-    const serving = appState.tokens.find(t => t.doctorId === doc.id && t.status === 'serving');
-    const waitingTokens = appState.tokens
-      .filter(t => t.doctorId === doc.id && t.status === 'waiting')
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    const nextTokensPreview = waitingTokens.slice(0, 3);
-
-    const card = document.createElement('div');
-    card.className = 'kiosk-board-box';
-    card.innerHTML = `
-      <div class="kiosk-board-top">
-        <div>
-          <h4>${doc.name}</h4>
-          <span style="font-size: 0.8rem; color: var(--text-muted);">${doc.department}</span>
-        </div>
-        <span class="kiosk-room-pill">${doc.room}</span>
-      </div>
-
-      <div class="kiosk-serving-hero">
-        <span class="label">CURRENTLY SERVING</span>
-        <div class="big-token">${serving ? serving.number : '--'}</div>
-        <div class="pat-name">${serving ? 'Patient: ' + serving.patientName : 'Doctor is Ready'}</div>
-      </div>
-
-      <div class="kiosk-next-up">
-        <span style="color: var(--text-muted);">Next in Queue:</span>
-        <div class="next-tokens-list">
-          ${nextTokensPreview.length > 0
-            ? nextTokensPreview.map(t => `<span class="kiosk-token-tag">${t.number}</span>`).join('')
-            : '<span style="color: var(--text-dim);">Queue empty</span>'
-          }
-        </div>
-      </div>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-// Live Clock for Waiting Display
-function updateLiveClock() {
-  const clockEl = document.getElementById('live-clock');
-  if (clockEl) {
-    clockEl.textContent = new Date().toLocaleTimeString();
-  }
-}
-setInterval(updateLiveClock, 1000);
-updateLiveClock();
-
-// -------------------------------------------------------------
-// 7. CLINIC STAFF DASHBOARD CONTROLLER
-// -------------------------------------------------------------
-const staffDoctorSelect = document.getElementById('staff-doctor-select');
-let activeStaffDocId = appState.doctors[0].id;
-
-function initStaffDoctorDropdown() {
-  if (!staffDoctorSelect) return;
-  staffDoctorSelect.innerHTML = '';
-  appState.doctors.forEach(doc => {
-    const opt = document.createElement('option');
-    opt.value = doc.id;
-    opt.textContent = `${doc.name} (${doc.room})`;
-    staffDoctorSelect.appendChild(opt);
-  });
-  staffDoctorSelect.value = activeStaffDocId;
-}
-
-staffDoctorSelect?.addEventListener('change', (e) => {
-  activeStaffDocId = e.target.value;
-  renderStaffDashboard();
-});
-
-// Render Staff Screen Elements
-function renderStaffDashboard() {
-  const currentDoc = appState.doctors.find(d => d.id === activeStaffDocId);
-  if (!currentDoc) return;
-
-  // 1. Current Serving Token
-  const servingToken = appState.tokens.find(
-    t => t.doctorId === activeStaffDocId && t.status === 'serving'
-  );
-
-  const numEl = document.getElementById('staff-current-token-num');
-  const patEl = document.getElementById('staff-current-patient-name');
-  const timerEl = document.getElementById('consult-timer');
-
-  if (servingToken) {
-    numEl.textContent = servingToken.number;
-    patEl.textContent = `Patient: ${servingToken.patientName}`;
-    const elapsed = servingToken.calledAt
-      ? Math.floor((Date.now() - new Date(servingToken.calledAt)) / 1000 / 60)
-      : 0;
-    timerEl.textContent = `In consultation: ~${elapsed} min`;
-  } else {
-    numEl.textContent = '--';
-    patEl.textContent = 'No patient currently called';
-    timerEl.textContent = 'Room vacant';
-  }
-
-  // 2. Waiting List
-  const waitingTokens = appState.tokens
-    .filter(t => t.doctorId === activeStaffDocId && t.status === 'waiting')
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-  document.getElementById('count-waiting').textContent = waitingTokens.length;
-  const waitingTbody = document.getElementById('table-waiting-body');
-  waitingTbody.innerHTML = '';
-
-  if (waitingTokens.length === 0) {
-    waitingTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 24px;">No patients waiting in queue.</td></tr>`;
-  } else {
-    waitingTokens.forEach((tok, idx) => {
-      const row = document.createElement('tr');
-      const waitMins = idx * currentDoc.avgConsultMins;
-      const createdStr = new Date(tok.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      row.innerHTML = `
-        <td><span class="table-token-badge">${tok.number}</span></td>
-        <td><strong>${tok.patientName}</strong></td>
-        <td>${createdStr}</td>
-        <td>~${waitMins}m</td>
-        <td>
-          <button class="row-action-btn" onclick="directCallToken('${tok.id}')">Call Now</button>
-        </td>
-      `;
-      waitingTbody.appendChild(row);
-    });
-  }
-
-  // 3. Skipped List
-  const skippedTokens = appState.tokens
-    .filter(t => t.doctorId === activeStaffDocId && t.status === 'skipped');
-
-  document.getElementById('count-skipped').textContent = skippedTokens.length;
-  const skippedTbody = document.getElementById('table-skipped-body');
-  skippedTbody.innerHTML = '';
-
-  if (skippedTokens.length === 0) {
-    skippedTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 24px;">No skipped tokens.</td></tr>`;
-  } else {
-    skippedTokens.forEach(tok => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td><span class="table-token-badge" style="color: var(--accent-rose); border-color: rgba(244,63,94,0.3);">${tok.number}</span></td>
-        <td>${tok.patientName}</td>
-        <td>${tok.skippedAt ? new Date(tok.skippedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Earlier'}</td>
-        <td>No-show / Requested hold</td>
-        <td>
-          <button class="row-action-btn" onclick="requeueSkippedToken('${tok.id}')">Re-queue</button>
-        </td>
-      `;
-      skippedTbody.appendChild(row);
-    });
-  }
-
-  // 4. Today's History
-  const historyTokens = appState.tokens
-    .filter(t => t.doctorId === activeStaffDocId && (t.status === 'completed' || t.status === 'cancelled'))
-    .sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
-
-  document.getElementById('count-history').textContent = historyTokens.length;
-  const historyTbody = document.getElementById('table-history-body');
-  historyTbody.innerHTML = '';
-
-  if (historyTokens.length === 0) {
-    historyTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding: 24px;">No consultations completed today yet.</td></tr>`;
-  } else {
-    historyTokens.forEach(tok => {
-      const row = document.createElement('tr');
-      let durationStr = '--';
-      if (tok.calledAt && tok.completedAt) {
-        const diff = Math.max(1, Math.round((new Date(tok.completedAt) - new Date(tok.calledAt)) / 60000));
-        durationStr = `${diff} mins`;
-      }
-
-      row.innerHTML = `
-        <td><span class="table-token-badge" style="color: var(--text-muted);">${tok.number}</span></td>
-        <td>${tok.patientName}</td>
-        <td>${currentDoc.name}</td>
-        <td>${durationStr}</td>
-        <td><span class="status-tag ${tok.status === 'completed' ? 'done' : 'skipped'}">${tok.status.toUpperCase()}</span></td>
-      `;
-      historyTbody.appendChild(row);
-    });
-  }
-}
-
-// Staff Action Handlers
-document.getElementById('btn-call-next')?.addEventListener('click', () => {
-  // 1. If someone is already serving, automatically complete them or prompt
-  const currentlyServing = appState.tokens.find(
-    t => t.doctorId === activeStaffDocId && t.status === 'serving'
-  );
-
-  if (currentlyServing) {
-    currentlyServing.status = 'completed';
-    currentlyServing.completedAt = new Date().toISOString();
-  }
-
-  // 2. Find first waiting token
-  const nextWaiting = appState.tokens
-    .filter(t => t.doctorId === activeStaffDocId && t.status === 'waiting')
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
-
-  if (!nextWaiting) {
-    alert('No more waiting patients for this doctor queue!');
-    saveClinicState(appState);
-    renderAllViews();
-    return;
-  }
-
-  nextWaiting.status = 'serving';
-  nextWaiting.calledAt = new Date().toISOString();
-
-  playClinicChime();
-  saveClinicState(appState);
-  renderAllViews();
-});
-
-// Recall Button
-document.getElementById('btn-recall')?.addEventListener('click', () => {
-  const currentlyServing = appState.tokens.find(
-    t => t.doctorId === activeStaffDocId && t.status === 'serving'
-  );
-  if (!currentlyServing) {
-    alert('No patient is currently being called. Click "Call Next" first.');
-    return;
-  }
-  playClinicChime();
-  alert(`Re-announced Token ${currentlyServing.number} for ${currentlyServing.patientName}.`);
-});
-
-// Complete Button
-document.getElementById('btn-complete')?.addEventListener('click', () => {
-  const currentlyServing = appState.tokens.find(
-    t => t.doctorId === activeStaffDocId && t.status === 'serving'
-  );
-  if (!currentlyServing) {
-    alert('No active consultation to complete.');
-    return;
-  }
-  currentlyServing.status = 'completed';
-  currentlyServing.completedAt = new Date().toISOString();
-  saveClinicState(appState);
-  renderAllViews();
-});
-
-// Skip Button
-document.getElementById('btn-skip')?.addEventListener('click', () => {
-  const currentlyServing = appState.tokens.find(
-    t => t.doctorId === activeStaffDocId && t.status === 'serving'
-  );
-  if (!currentlyServing) {
-    alert('No patient currently in consultation to skip.');
-    return;
-  }
-  currentlyServing.status = 'skipped';
-  currentlyServing.skippedAt = new Date().toISOString();
-  saveClinicState(appState);
-  renderAllViews();
-});
-
-// Walk-in Generator
-document.getElementById('btn-issue-walkin')?.addEventListener('click', () => {
-  const walkinInput = document.getElementById('walkin-patient-name');
-  const name = walkinInput.value.trim();
-  if (!name) return;
-
-  const doc = appState.doctors.find(d => d.id === activeStaffDocId);
-  const nextSeq = appState.sequenceCounters[activeStaffDocId] || 101;
-  const tokenNumber = `${doc.prefix}-${nextSeq}`;
-
-  const newToken = {
-    id: 'tok-' + Date.now(),
-    number: tokenNumber,
-    doctorId: activeStaffDocId,
-    patientName: name + ' (Walk-in)',
-    status: 'waiting',
-    createdAt: new Date().toISOString(),
-    calledAt: null,
-    completedAt: null
-  };
-
-  appState.tokens.push(newToken);
-  appState.sequenceCounters[activeStaffDocId] = nextSeq + 1;
-  walkinInput.value = '';
-  saveClinicState(appState);
-  renderAllViews();
-});
-
-// Direct Call Token from Table
-window.directCallToken = function(tokenId) {
-  // Complete any currently serving
-  const currentlyServing = appState.tokens.find(
-    t => t.doctorId === activeStaffDocId && t.status === 'serving'
-  );
-  if (currentlyServing) {
-    currentlyServing.status = 'completed';
-    currentlyServing.completedAt = new Date().toISOString();
-  }
-
-  const token = appState.tokens.find(t => t.id === tokenId);
-  if (token) {
-    token.status = 'serving';
-    token.calledAt = new Date().toISOString();
-    playClinicChime();
-    saveClinicState(appState);
-    renderAllViews();
-  }
-};
-
-// Requeue Skipped Token
-window.requeueSkippedToken = function(tokenId) {
-  const token = appState.tokens.find(t => t.id === tokenId);
-  if (token) {
-    token.status = 'waiting';
-    token.createdAt = new Date().toISOString(); // puts at end of queue
-    delete token.skippedAt;
-    saveClinicState(appState);
-    renderAllViews();
-  }
-};
-
-// Reset to Sample Demo Data
-document.getElementById('btn-reset-demo')?.addEventListener('click', () => {
-  if (confirm('Reset clinic queue to sample mock state?')) {
-    localStorage.removeItem(ACTIVE_USER_TOKEN_KEY);
-    appState = JSON.parse(JSON.stringify(INITIAL_MOCK_STATE));
-    saveClinicState(appState);
-    renderAllViews();
-  }
-});
-
-// -------------------------------------------------------------
-// 8. GLOBAL RENDER & CROSS-TAB REAL-TIME SYNCHRONIZATION
-// -------------------------------------------------------------
-function renderAllViews() {
-  renderDoctorSelectionCards();
-  renderPatientTokenTicket();
-  renderPublicDisplayBoard();
-  renderStaffDashboard();
-}
-
-// Listen for storage event (if staff advances queue in one tab, patient tab updates immediately!)
-window.addEventListener('storage', (e) => {
-  if (e.key === STORAGE_KEY) {
-    appState = loadClinicState();
-    renderAllViews();
-  }
-});
-
-window.addEventListener('clinic-state-updated', () => {
-  renderAllViews();
-});
-
-// Initial Bootstrap
-initStaffDoctorDropdown();
-renderAllViews();
