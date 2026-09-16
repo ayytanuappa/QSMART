@@ -80,8 +80,7 @@ body {
 
     font-family: var(--font-primary);
 
-    background-image:
-        url("https://t4.ftcdn.net/jpg/03/18/08/89/360_F_318088909_XdfVZov3odaHEKncMEOEvUP1HuboWMYt.jpg");
+    background-image: url("images/background.png");
 
     background-repeat: no-repeat;
 
